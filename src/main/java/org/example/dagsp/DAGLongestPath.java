@@ -1,35 +1,68 @@
 package org.example.dagsp;
 
-import org.example.model.Edge;
 import org.example.model.Graph;
+import org.example.model.Edge;
+import org.example.topo.KahnTopoSort;
 import org.example.util.Metrics;
 
 import java.util.Arrays;
 import java.util.List;
 
-/** Longest path (critical) on DAG. */
+/**
+ * Находит самые длинные пути (critical path) в DAG.
+ * Использует динамическое программирование по топологическому порядку.
+ */
 public class DAGLongestPath {
-    private final Graph dag;
+
+    private final Graph g;
     private final Metrics metrics;
+    private final double[] longest;
+    private final int[] parent;
 
-    public DAGLongestPath(Graph dag, Metrics metrics) { this.dag = dag; this.metrics = metrics; }
+    public DAGLongestPath(Graph g, Metrics m, int source) {
+        this.g = g;
+        this.metrics = m;
+        this.longest = new double[g.getV()];
+        this.parent = new int[g.getV()];
+        Arrays.fill(longest, Double.NEGATIVE_INFINITY);
+        Arrays.fill(parent, -1);
+        longest[source] = 0;
+    }
 
-    public double[] run(int src, List<Integer> topo) {
-        int n = dag.getV();
-        double[] dist = new double[n];
-        Arrays.fill(dist, Double.NEGATIVE_INFINITY);
-        dist[src] = 0.0;
-        metrics.startTimer();
-        for (int u : topo) {
-            if (dist[u] == Double.NEGATIVE_INFINITY) continue;
-            for (Edge e : dag.getAdj().get(u)) {
-                metrics.incOps();
-                int v = e.getV();
-                double w = e.getW();
-                if (dist[v] < dist[u] + w) dist[v] = dist[u] + w;
+    public void run(int source) {
+        long start = System.nanoTime();
+
+        // Топологическая сортировка
+        KahnTopoSort topo = new KahnTopoSort(g, new Metrics());
+        List<Integer> order = topo.sort();
+
+        // Поиск длиннейших путей в DAG
+        for (int u : order) {
+            if (longest[u] != Double.NEGATIVE_INFINITY) {
+                for (Edge e : g.getAdj(u)) { // получаем список рёбер из u
+                    int v = g.getV();
+                    double w = e.getW();
+                    if (longest[u] + w > longest[v]) {
+                        longest[v] = longest[u] + w;
+                        parent[v] = u;
+                    }
+                }
             }
         }
-        metrics.stopTimer();
-        return dist;
+
+        metrics.getTimeNs((System.nanoTime() - start) / 1_000_000.0);
+    }
+
+    // --- Геттеры для тестов и вывода ---
+    public double[] getLongestDist() {
+        return longest;
+    }
+
+    public double getLongestDistanceTo(int v) {
+        return longest[v];
+    }
+
+    public int[] getParent() {
+        return parent;
     }
 }
