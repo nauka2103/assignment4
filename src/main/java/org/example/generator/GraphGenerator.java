@@ -13,7 +13,7 @@ import java.util.Random;
 public class GraphGenerator {
 
     public static void main(String[] args) throws IOException {
-        int[] vertexCounts = {5, 10, 15, 20, 25, 30, 40, 50, 60}; // 9 файлов
+        int[] vertexCounts = {5, 10, 15, 20, 25, 30, 40, 50, 60};
         ObjectMapper mapper = new ObjectMapper();
         Random rand = new Random();
 
@@ -24,21 +24,19 @@ public class GraphGenerator {
             int V = vertexCounts[i];
             Graph g = new Graph(V, true);
 
-            // генерируем случайное количество рёбер, чтобы не было слишком плотных графов
             int E = rand.nextInt(V * 3) + V;
 
             for (int j = 0; j < E; j++) {
                 int u = rand.nextInt(V);
                 int v = rand.nextInt(V);
-                if (u == v) continue; // без петель
+                if (u == v) continue;
                 int w = rand.nextInt(50) + 1;
                 g.addEdge(u, v, w);
             }
 
-            int source = rand.nextInt(V); // теперь случайный source
+            int source = rand.nextInt(V);
             String weightModel = "edge";
 
-            // создаём JSON вручную через ObjectMapper
             ObjectNode root = mapper.createObjectNode();
             root.put("V", V);
 
