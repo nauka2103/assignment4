@@ -24,7 +24,7 @@ public class GraphLoader {
             int n = root.path("n").asInt(0);
             Graph g = new Graph(n, directed);
 
-            List<Edge> edges = mapper.convertValue(root.path("edges"), new TypeReference<List<Edge>>() {});
+            var edges = mapper.convertValue(root.path("edges"), new TypeReference<List<Edge>>() {});
             if (edges != null) {
                 for (Edge e : edges) {
                     g.addEdge(e.getU(), e.getV(), e.getW());

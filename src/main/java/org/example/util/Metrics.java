@@ -5,6 +5,7 @@ public class Metrics {
     private long ops = 0;
     private long t0 = 0;
     private double timeMs = 0;
+    public long relaxations;
 
     public void incOps() { ops++; }
     public long getOps() { return ops; }
