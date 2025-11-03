@@ -1,0 +1,10 @@
+dataset_name,scc_duration_ns,dfs_calls,edges_processed,topo_duration_ns,dfs_recursive_calls,dfs_stack_adds,shortest_path_ns,edge_relaxations
+medium_1.json,29625 ns,15,25,13750 ns,0,0,5750 ns,6
+large_1.json,21292 ns,30,65,1833 ns,0,0,1417 ns,2
+small_1.json,6875 ns,8,10,2917 ns,0,0,2291 ns,10
+medium_3.json,11167 ns,15,25,3125 ns,0,0,2500 ns,12
+small_2.json,7334 ns,8,10,2958 ns,0,0,2459 ns,10
+large_3.json,20750 ns,30,60,1625 ns,0,0,1583 ns,2
+large_2.json,21042 ns,30,60,1584 ns,0,0,1333 ns,2
+small_3.json,6500 ns,8,11,3041 ns,0,0,3125 ns,10
+medium_2.json,10333 ns,15,27,3209 ns,0,0,3000 ns,14

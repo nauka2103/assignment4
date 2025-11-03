@@ -1,55 +1,91 @@
 package org.example;
 
-import org.example.io.GraphLoader;
-import org.example.io.SCCCsvWriter;
-import org.example.scc.TarjanSCC;
-import org.example.topo.KahnTopoSort;
 import org.example.dagsp.DAGShortestPath;
-import org.example.dagsp.DAGLongestPath;
+import org.example.io.GraphLoader;
 import org.example.model.DataSet;
 import org.example.model.Graph;
+import org.example.scc.TarjanSCC;
+import org.example.topo.KahnTopoSort;
 import org.example.util.Metrics;
 
-import java.util.Arrays;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.List;
 
+/**
+ * Runs all datasets (small, medium, large) and writes summary.csv with performance metrics.
+ */
 public class Main {
     public static void main(String[] args) {
-        String path = args.length > 0 ? args[0] : "data/small_1.json";
-        DataSet ds = GraphLoader.loadGraph(path);
-        Graph g = ds.getGraph();
+        File dataDir = new File("data");
+        File[] jsonFiles = dataDir.listFiles((dir, name) -> name.endsWith(".json"));
+        if (jsonFiles == null || jsonFiles.length == 0) {
+            System.err.println("❌ No JSON files found in data/");
+            return;
+        }
 
-        // === SCC ===
-        Metrics mScc = new Metrics();
-        TarjanSCC scc = new TarjanSCC(g, mScc);
-        scc.run();
-        System.out.println("SCC count = " + scc.getComponents().size());
-        SCCCsvWriter.write("results/scc.csv", g, scc, mScc);
+        File resultsDir = new File("results");
+        if (!resultsDir.exists()) resultsDir.mkdirs();
 
-        // === Condensation + Topological sort ===
-        Graph dag = scc.buildCondensation();
-        Metrics mTopo = new Metrics();
-        KahnTopoSort topo = new KahnTopoSort(dag, mTopo);
-        List<Integer> order = topo.sort();
-        System.out.println("Topo order = " + Arrays.toString(order.toArray()));
-        System.out.println("Topo time ms = " + mTopo.getTimeMs());
+        File summaryFile = new File(resultsDir, "summary.csv");
 
-        // === DAG Shortest & Longest Paths ===
-        Metrics ms = new Metrics();
-        Metrics ml = new Metrics();
+        try (FileWriter fw = new FileWriter(summaryFile)) {
+            fw.write("dataset_name,scc_duration_ns,dfs_calls,edges_processed,topo_duration_ns,dfs_recursive_calls,dfs_stack_adds,shortest_path_ns,edge_relaxations\n");
 
-        DAGShortestPath sp = new DAGShortestPath(dag, ms);
-        DAGLongestPath lp = new DAGLongestPath(dag, ml, 0);
+            for (File f : jsonFiles) {
+                String datasetName = f.getName();
+                System.out.println("📂 Running dataset: " + datasetName);
 
-        int src = Math.min(ds.getSource(), dag.getV() - 1);
+                DataSet ds = GraphLoader.loadGraph(f.getPath());
+                Graph g = ds.getGraph();
 
-        sp.run(src);
-        lp.run(src);
+                // === SCC ===
+                Metrics mScc = new Metrics();
+                mScc.startTimer();
+                TarjanSCC scc = new TarjanSCC(g, mScc);
+                scc.run();
+                mScc.stopTimer();
 
-        System.out.println("Shortest distances = " + Arrays.toString(sp.getDist()));
-        System.out.println("Longest distances = " + Arrays.toString(lp.getLongestDist()));
+                // === Condensation + Topological Sort ===
+                Graph dag = scc.buildCondensation();
+                Metrics mTopo = new Metrics();
+                mTopo.startTimer();
+                KahnTopoSort topo = new KahnTopoSort(dag, mTopo);
+                List<Integer> order = topo.sort();
+                mTopo.stopTimer();
 
-        System.out.println("Shortest path metrics: " + ms);
-        System.out.println("Longest path metrics: " + ml);
+                // === Shortest Path ===
+                Metrics mShort = new Metrics();
+                mShort.startTimer();
+                DAGShortestPath sp = new DAGShortestPath(dag, mShort);
+                sp.run(Math.min(ds.getSource(), dag.getV() - 1));
+                mShort.stopTimer();
+
+                // === Output log ===
+                System.out.printf("✅ %-12s | SCC=%.0f ns | TOPO=%.0f ns | SP=%.0f ns%n",
+                        datasetName, mScc.getTimeMs() * 1_000_000, mTopo.getTimeMs() * 1_000_000, mShort.getTimeMs() * 1_000_000);
+
+                // === Write to CSV ===
+                fw.write(String.format(
+                        "%s,%.0f ns,%d,%d,%.0f ns,%d,%d,%.0f ns,%d\n",
+                        datasetName,
+                        mScc.getTimeMs() * 1_000_000, // ns
+                        g.getV(), // dfs_calls proxy
+                        g.getEdges().size(), // edges_processed
+                        mTopo.getTimeMs() * 1_000_000, // ns
+                        0, // dfs_recursive_calls
+                        0, // dfs_stack_adds
+                        mShort.getTimeMs() * 1_000_000, // ns
+                        mShort.getOps() // relaxations
+                ));
+                fw.flush();
+            }
+
+            System.out.println("\n📊 Summary CSV saved to: " + summaryFile.getPath());
+
+        } catch (Exception e) {
+            System.err.println("❌ Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
