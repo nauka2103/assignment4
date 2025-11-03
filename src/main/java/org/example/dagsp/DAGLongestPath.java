@@ -9,8 +9,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Находит самые длинные пути (critical path) в DAG.
- * Использует динамическое программирование по топологическому порядку.
+ * Алгоритм поиска самого длинного пути (Critical Path) в DAG.
+ * Работает через динамическое программирование по топологическому порядку.
  */
 public class DAGLongestPath {
 
@@ -29,19 +29,20 @@ public class DAGLongestPath {
         longest[source] = 0;
     }
 
-    public void run(int source) {
+    public void run(int src) {
         long start = System.nanoTime();
 
         // Топологическая сортировка
         KahnTopoSort topo = new KahnTopoSort(g, new Metrics());
         List<Integer> order = topo.sort();
 
-        // Поиск длиннейших путей в DAG
+        // Поиск длиннейших путей
         for (int u : order) {
             if (longest[u] != Double.NEGATIVE_INFINITY) {
-                for (Edge e : g.getAdj(u)) { // получаем список рёбер из u
-                    int v = g.getV();
-                    double w = e.getW();
+                List<Edge> neighbors = g.getAdj().get(u);   // <-- getAdj() возвращает List<List<Edge>>
+                for (Edge e : neighbors) {
+                    int v = e.getV();       // или e.getTo() / e.getU() — см. Edge.java
+                    double w = e.getW();    // или e.getWeight()
                     if (longest[u] + w > longest[v]) {
                         longest[v] = longest[u] + w;
                         parent[v] = u;
@@ -50,10 +51,11 @@ public class DAGLongestPath {
             }
         }
 
-        metrics.getTimeNs((System.nanoTime() - start) / 1_000_000.0);
+
+        metrics.startTimer();
     }
 
-    // --- Геттеры для тестов и вывода ---
+    // --- Геттеры для тестов ---
     public double[] getLongestDist() {
         return longest;
     }
